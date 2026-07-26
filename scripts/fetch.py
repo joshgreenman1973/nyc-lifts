@@ -13,6 +13,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RAW = os.path.join(HERE, "..", "data", "raw")
@@ -81,7 +82,7 @@ def main():
     print("Lifts - fetching MTA data")
 
     # 1. Live outages. The whole live board depends on this one.
-    print("\n[1/5] live elevator + escalator outages")
+    print("\n[1/6] live elevator + escalator outages")
     live = get(ENE_LIVE)
     if not isinstance(live, list):
         raise SystemExit(f"FATAL: live feed returned {type(live)}, expected a list")
@@ -98,26 +99,30 @@ def main():
     save("live_outages.json", live)
 
     # 2. Equipment inventory: location, age, ADA status, redundancy.
-    print("\n[2/5] equipment inventory")
+    print("\n[2/6] equipment inventory")
     inv = paged("94fv-bak7", expect_min=600)
     save("inventory.json", inv)
 
     # 3. Monthly availability per unit, 2015 to now.
-    print("\n[3/5] monthly availability since 2015 (large)")
+    print("\n[3/6] monthly availability since 2015 (large)")
     avail = paged("rc78-7x78", order="month", expect_min=70000)
     save("availability.json", avail)
 
     # 4. Station complexes with ADA status and coordinates.
-    print("\n[4/5] station complexes")
+    print("\n[4/6] station complexes")
     stations = paged("5f5g-n3cz", expect_min=400)
     save("stations.json", stations)
 
     # 5. Recent ridership, to weigh an outage by how many people meet it.
-    print("\n[5/5] station ridership (trailing 12 months)")
+    today = datetime.now(timezone.utc).date().replace(day=1)
+    twelve_months_ago = (today - timedelta(days=365)).replace(day=1).isoformat()
+    print(f"\n[5/6] station ridership (12 months from {twelve_months_ago})")
     rid = paged(
         "ak4z-sape",
         select="station_complex_id, sum(ridership) AS riders",
-        where="month >= '2025-07-01T00:00:00.000'",
+        # Rolling twelve months. Hardcoding a date would quietly turn "the
+        # past year" into eighteen months a year from now.
+        where=f"month >= '{twelve_months_ago}T00:00:00.000'",
         group="station_complex_id",
         order="station_complex_id",
         expect_min=300,
@@ -137,7 +142,9 @@ def main():
             "availability": f"{SOCRATA}/rc78-7x78.json",
             "stations": f"{SOCRATA}/5f5g-n3cz.json",
             "ridership": f"{SOCRATA}/ak4z-sape.json",
+            "subway_lines": f"{SOCRATA}/s692-irgq.json",
         },
+        "ridership_window_from": twelve_months_ago,
         "counts": {
             "live_outages": len(live),
             "inventory": len(inv),

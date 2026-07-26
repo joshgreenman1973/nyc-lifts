@@ -203,7 +203,7 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
     <span id="stamp-date">loading</span>
   </div>
   <h1 class="wordmark">L<span class="if">if</span>ts</h1>
-  <p class="deck">Every elevator in the New York City subway, and whether it is working right now. The system reports <b>97 percent availability</b>. That number is true. It is also not the number a rider in a wheelchair needs, which is whether <b>the one elevator at their station</b> is running today.</p>
+  <p class="deck">Every elevator in the New York City subway, and whether it is working right now. The system reports <b>97.6 percent availability</b>. That number is true. It is also not the number a rider in a wheelchair needs, which is whether <b>the one elevator at their station</b> is running today.</p>
   <div class="fields" id="fields"></div>
 </div>
 
@@ -245,7 +245,7 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
     <button data-f="ES" aria-pressed="false">Escalators</button>
     <button data-f="ada" aria-pressed="false">Accessibility critical</button>
     <button data-f="sole" aria-pressed="false">Sole elevator</button>
-    <button data-f="notrem" aria-pressed="false">Exclude removed</button>
+    <button data-f="notrem" aria-pressed="false">Working fleet only</button>
     <span class="count" id="board-count"></span>
   </div>
   <div class="bars" id="bars"></div>
@@ -265,7 +265,7 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
     <h2>Eleven years, one elevator per line</h2>
     <span class="note" id="grid-note"></span>
   </div>
-  <p class="intro">Every elevator in the system is a single horizontal line. Every month since January 2015 is a step along it. The darker the mark, the more of that month the elevator was out; grey means the unit was not yet reporting. Read down for the fleet, across for one machine's life. The long dark runs are capital replacements. The scattered flecks are ordinary breakdowns, and there are a lot of them: only one unit-month in six is above 99.5 percent availability.</p>
+  <p class="intro">Every elevator in the system is a single horizontal line. Every month since January 2015 is a step along it. The darker the mark, the more of that month the elevator was out; grey marks months with no filing, which is not the same thing everywhere: before a unit's first filing it had not started, after its last it had stopped, and in between it simply did not file. Read down for the fleet, across for one machine's life. The long dark runs are capital replacements. The scattered flecks are ordinary breakdowns, and there are a lot of them: only one unit-month in six is above 99.5 percent availability. This covers the <span id="grid-cov">-</span> elevators that have ever filed availability data. A further <span id="grid-never">-</span> appear in the equipment inventory but have never filed at all, and cannot be drawn here.</p>
   <div class="gridwrap">
     <canvas id="grid"></canvas>
     <div id="grid-tip">Hover the grid for a unit and month.</div>
@@ -316,8 +316,9 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
     <ul>
       <li><b>An elevator counted as available can still fail you.</b> Availability is measured in hours in service. It does not measure whether the car was filthy, whether the door held, or whether it was running when you happened to arrive.</li>
       <li><b>"No way in" is deliberately conservative.</b> A station appears only when every elevator marked accessible there is out in the live feed. Many complexes need several elevators in sequence to get from street to platform, so a single outage can strand a rider at a station this page still counts as open.</li>
-      <li><b>Two MTA sources disagree, and this page takes the cautious side.</b> The equipment inventory marks <span id="disputed-n"></span> accessible elevators as installed but not functioning while the live outage feed does not list them as out. Calling a station inaccessible is the strongest claim here, so it is made only on the continuously updated feed.</li>
-      <li><b>Removed is not the same as broken.</b> Units pulled out for capital replacement still appear in the live feed. They are shown in grey and kept out of the count of working elevators that are down, because they are no longer part of the fleet.</li>
+      <li><b>Two MTA sources disagree, and this page takes the cautious side.</b> The equipment inventory and the live outage feed do not describe the same fleet. Calling a station inaccessible is the strongest claim here, so it is made only where the continuously updated live feed reports every accessibility elevator at that station out, and only at stations the agency itself lists as accessible. Accessibility elevators currently in that grey zone: <span id="disputed-n"></span>.</li>
+      <li><b>What counts as an elevator is decided by behaviour, not by a label.</b> The inventory's own status field cannot be trusted for this: seven units it marks as removed filed 94 to 99 percent availability last month, and every unit it marks installed-but-not-functioning filed nothing. So the fleet here is the elevators that actually reported service hours in the most recent month. Units listed as out that are not filing at all, generally long capital replacements, are shown in grey and counted separately.</li>
+      <li><b>Some equipment cannot be placed.</b> <span id="c-orphan">-</span> inventory records carry no station at all, and <span id="c-never">-</span> elevators never appear in the availability filings. They are excluded from station level figures rather than guessed at.</li>
       <li><b>Redundancy is the agency's judgment, not a measurement.</b> The inventory records whether a unit has a redundant elevator. Where that field is blank, this page makes no claim.</li>
       <li><b>Entrapment counts are reports, not injuries.</b> The data records that riders were shut inside and freed. It says nothing about how long they waited or what happened to them.</li>
       <li><b>Most of the subway is not in this story at all.</b> Step-free access exists at a minority of stations. A perfect reliability score would still leave most of the system unreachable.</li>
@@ -370,19 +371,23 @@ function render(){
     "Live reading "+new Date(D.generated_at).toLocaleString("en-US",
       {month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"});
   document.getElementById("disputed-n").textContent = h.disputed_units;
+  document.getElementById("c-orphan").textContent = h.orphan_units;
+  document.getElementById("c-never").textContent = h.never_report;
 
   const fields=[
-    {label:"Elevators out of service now", val:h.out_now, cls:"stamp",
-     sub:"of "+F(h.elevators_total)+" installed, plus "+h.out_now_removed+" removed for replacement"},
+    {label:"Working elevators out of service now", val:h.out_now, cls:"stamp",
+     sub:"of "+F(h.elevators_total)+" filing service hours in "+h.fleet_month+
+         ", plus "+h.out_now_offline+" listed out that are not filing at all"},
     {label:"Stations with no step-free access right now", val:h.cut_off_now,
      cls:h.cut_off_now>0?"stamp":"", sub:"every accessible elevator out at once"},
     {label:"Station complexes with full accessibility", val:h.ada_full, cls:"access",
      sub:"of "+F(h.stations_total)+" total, plus "+h.ada_partial+" partial"},
     {label:"Elevators with no redundant elevator", val:h.elevators_no_redundancy,
      sub:"of "+F(h.redundancy_known)+" where the agency records an answer"},
-    {label:"Longest outage running now", val:Math.round(h.longest_outage_days)+" d",
-     cls:"stamp", sub:esc(h.longest_outage_station)},
-    {label:"Riders trapped in elevators since 2015", val:F(h.entrapments_total),
+    {label:"Longest outage of a working elevator", val:Math.round(h.longest_outage_days)+" d",
+     cls:"stamp", sub:esc(h.longest_outage_station)+" ("+esc(h.longest_outage_code)+")"},
+    {label:"Times riders were shut inside an elevator since 2015",
+     val:F(h.entrapment_events_total),
      sub:F(h.entrapments_latest_full)+" in "+h.entrapments_latest_full_year+
          ", about "+h.entrapments_per_day_recent+" a day"},
     {label:"Elevator availability, "+h.entrapments_latest_full_year, val:h.availability_latest+"%",
@@ -437,7 +442,7 @@ function boardRows(){
   if(filter==="ES") r=r.filter(x=>x.kind==="Escalator");
   if(filter==="ada") r=r.filter(x=>x.ada);
   if(filter==="sole") r=r.filter(x=>x.redundancy_known && !x.redundant);
-  if(filter==="notrem") r=r.filter(x=>!x.removed);
+  if(filter==="notrem") r=r.filter(x=>x.present);
   return r.sort((a,b)=>(b.days_out||0)-(a.days_out||0));
 }
 function drawBoard(){
@@ -456,10 +461,10 @@ function drawBoard(){
        `<span style="left:${w(t)}%">${t===365?"1 yr":t===730?"2 yr":t===182?"6 mo":t+" d"}</span>`).join("")}
      </div><div class="pad"></div></div>`+
     r.map(x=>{
-      const cls = x.removed?"rem":(x.kind==="Escalator"?"esc":"");
+      const cls = !x.present?"rem":(x.kind==="Escalator"?"esc":"");
       return `<div class="bar" title="${esc(x.reason||"")}">
         <div class="bar-label">${esc(x.station)}<span>${x.kind} ${esc(x.code)}${
-          x.ada?" &middot; accessibility":""}${x.removed?" &middot; removed":""}</span></div>
+          x.ada?" &middot; accessibility":""}${x.present?"":" &middot; not filing service hours"}</span></div>
         <div class="bar-track"><div class="bar-fill ${cls}" style="width:${w(x.days_out)}%"></div></div>
         <div class="bar-days">${x.days_out!=null?Math.round(x.days_out):"-"} d</div></div>`;
     }).join("");
@@ -469,7 +474,7 @@ function drawBoard(){
     return `<tr><td class="mono">${x.days_out!=null?Math.round(x.days_out):"-"}</td>
       <td><span class="st-name">${esc(x.station)}</span>${x.serving?`<span class="serving">${esc(x.serving)}</span>`:""}</td>
       <td class="mono">${x.kind} ${esc(x.code)}<br>${x.ada?'<span class="tag ada">Accessibility</span>':""}
-        ${sole?'<span class="tag sole">Sole elevator</span>':""}${x.removed?'<span class="tag rem">Removed</span>':""}</td>
+        ${sole?'<span class="tag sole">Sole elevator</span>':""}${x.present?"":'<span class="tag rem">Not filing</span>'}</td>
       <td>${esc(x.reason||"not given")}</td><td class="mono">${eta}</td></tr>`;
   }).join("");
 }
@@ -498,13 +503,17 @@ function drawGrid(){
   rows.forEach((g,y)=>{
     for(let x=0;x<months.length;x++){
       const c=g.row[x];
-      if(c==="-"){ ctx.fillStyle="#e9e9e6"; }
+      if(c==="-"||c==="x"||c==="g"){ ctx.fillStyle=(c==="g")?"#dcdcd6":"#e9e9e6"; }
       else { ctx.fillStyle=RAMP[9-parseInt(c,10)]; }
       ctx.fillRect(x*cw,y*rh,cw,rh);
     }
   });
   document.getElementById("ramp").innerHTML=RAMP.slice().reverse().map(c=>`<i style="background:${c}"></i>`).join("");
   document.getElementById("grid-count").textContent=rows.length+" elevators × "+months.length+" months";
+  const gc=document.getElementById("grid-cov");
+  if(gc) gc.textContent=rows.length;
+  const gn=document.getElementById("grid-never");
+  if(gn) gn.textContent=D.headline.never_report;
   document.getElementById("grid-note").textContent=months[0]+" to "+months[months.length-1];
   const tip=document.getElementById("grid-tip");
   cv.addEventListener("mousemove",e=>{

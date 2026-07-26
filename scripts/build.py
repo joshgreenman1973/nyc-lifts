@@ -11,6 +11,9 @@ import json
 import os
 import collections
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+ET = ZoneInfo("America/New_York")   # the MTA stamps outages in local time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RAW = os.path.join(HERE, "..", "data", "raw")
@@ -54,6 +57,22 @@ def main():
 
     now = datetime.now(timezone.utc)
 
+    # ---- what counts as part of the fleet ----------------------------------
+    # The inventory's service_status_code is not a reliable signal. Seven units
+    # it marks RNOS ("Removed") reported 94-99 percent availability in the most
+    # recent month, and every INOS/IFOS unit reports nothing at all. Presence is
+    # therefore behavioural: an elevator is in the operating fleet if it filed
+    # service hours in the latest month of the availability data. Sixty-two
+    # elevators the inventory lists never appear in that data in any month;
+    # they are counted and disclosed separately rather than silently included.
+    months_all = sorted({r["month"][:7] for r in av})
+    latest_month = months_all[-1]
+    reported_latest = {
+        r["equipment_code"] for r in av
+        if r["month"][:7] == latest_month and num(r.get("_24_hour_total_hours")) > 0
+    }
+    ever_reported = {r["equipment_code"] for r in av}
+
     # ---- station complexes -------------------------------------------------
     # ada: 0 none, 1 full, 2 partial. Verified against MTA's own field values.
     st = {}
@@ -86,12 +105,13 @@ def main():
             # '+' has a redundant elevator, '-' does not. Escalators are null.
             "redundant": r.get("redundant_elevator") == "+",
             "redundancy_known": r.get("redundant_elevator") in ("+", "-"),
-            # IFIS in service; INOS/IFOS installed but not functioning;
-            # RNOS physically removed, so no longer part of the station.
-            "in_service": r.get("service_status_code") == "IFIS",
-            "present": r.get("service_status_code") in ("IFIS", "INOS", "IFOS"),
-            "removed": r.get("service_status_code") == "RNOS",
+            # Behavioural presence, not the inventory's own status field.
+            "present": code in reported_latest,
+            "ever_reported": code in ever_reported,
             "status": r.get("service_status"),
+            "status_code": r.get("service_status_code"),
+            # Kept for disclosure only: the inventory's claim about itself.
+            "inv_removed": r.get("service_status_code") == "RNOS",
             "street": (r.get("street_access") or "").upper() == "YES",
             "installed": (r.get("latest_installation_date") or "")[:10],
             "serving": r.get("notes"),
@@ -100,10 +120,14 @@ def main():
         }
 
     elevators = {c: u for c, u in units.items() if u["kind"] == "Elevator"}
-    # An elevator the station still physically has: installed, working or not.
-    # Removed units are excluded, otherwise a station loses credit for an
-    # elevator that no longer exists and gains a permanent phantom outage.
-    ada_elevators = {c: u for c, u in elevators.items() if u["ada"] and u["present"]}
+    # Accessibility elevators that are demonstrably in the operating fleet and
+    # attached to a known station. Twenty-three inventory records carry no
+    # station at all; they cannot be reasoned about per station and are
+    # excluded here and counted for disclosure.
+    ada_elevators = {c: u for c, u in elevators.items()
+                     if u["ada"] and u["present"] and u["complex"] not in ("None", "", None)}
+    orphan_units = sum(1 for u in units.values()
+                       if u["complex"] in ("None", "", None))
 
     # ---- system trend by year ---------------------------------------------
     year = collections.defaultdict(lambda: collections.defaultdict(float))
@@ -114,7 +138,6 @@ def main():
         k["hours_avail"] += num(r.get("_24_hour_hours_available"))
         k["hours_total"] += num(r.get("_24_hour_total_hours"))
         k["entrapments"] += num(r.get("entrapments"))
-        k["unscheduled"] += num(r.get("scheduled_outages")) * 0  # placeholder
         k["unscheduled"] += num(r.get("unscheduled_outages"))
         k["scheduled"] += num(r.get("scheduled_outages"))
         k["units"] = 0  # filled below
@@ -197,7 +220,7 @@ def main():
         k["unscheduled"] += r["unscheduled"]
     for code, k in unit_recent.items():
         u = units.get(code)
-        if not u or u["kind"] != "Elevator":
+        if not u or u["kind"] != "Elevator" or not u["present"]:
             continue
         c = comp[u["complex"]]
         c["hours_avail"] += k["hours_avail"]
@@ -210,7 +233,9 @@ def main():
         u = units.get(code, {})
         started = parse_outage_dt(o.get("outagedate"))
         eta = parse_outage_dt(o.get("estimatedreturntoservice"))
-        days = round((now.replace(tzinfo=None) - started).total_seconds() / 86400, 1) \
+        # MTA stamps are Eastern local time; comparing them to a UTC clock
+        # inflated every duration by four or five hours.
+        days = round((now - started.replace(tzinfo=ET)).total_seconds() / 86400, 1) \
             if started else None
         row = {
             "code": code,
@@ -223,7 +248,8 @@ def main():
             "ada": o.get("ADA") == "Y",
             "redundant": u.get("redundant"),
             "redundancy_known": u.get("redundancy_known", False),
-            "removed": u.get("removed", False),
+            "present": u.get("present", False),
+            "inv_removed": u.get("inv_removed", False),
             "reason": o.get("reason"),
             "started": started.isoformat() if started else None,
             "eta": eta.isoformat() if eta else None,
@@ -236,14 +262,10 @@ def main():
     # Stations with no working step-free access right now: every in-service
     # ADA elevator at the complex is currently out.
     out_codes = {r["code"] for r in current if r["kind"] == "Elevator"}
-    # Two MTA sources disagree about a handful of units: the inventory marks
-    # them installed-but-not-functioning while the live feed, which tracks
-    # active work orders, does not list them as out. The live feed wins here.
-    # Calling a station inaccessible is the strongest claim this page makes,
-    # so it is made only on the continuously updated source. Units in that
-    # grey zone are counted and disclosed rather than assumed either way.
+    # Units the inventory calls out of service while the live feed does not
+    # list them as out. Disclosed rather than assumed either way.
     disputed = sorted(c for c, u in ada_elevators.items()
-                      if not u["in_service"] and c not in out_codes)
+                      if u["status_code"] in ("INOS", "IFOS") and c not in out_codes)
 
     ada_by_complex = collections.defaultdict(list)
     for code, u in ada_elevators.items():
@@ -251,6 +273,13 @@ def main():
 
     cut_off = []
     for cid, codes in ada_by_complex.items():
+        # The station must be one the MTA considers accessible in the first
+        # place. A few complexes the agency lists as having no step-free
+        # access nonetheless carry an accessibility-flagged elevator in the
+        # equipment file; announcing those as "no way in" would contradict
+        # the same page's own map.
+        if st.get(cid, {}).get("ada", 0) not in (1, 2):
+            continue
         down = [c for c in codes if c in out_codes]
         if codes and len(down) == len(codes):
             s = st.get(cid, {})
@@ -303,6 +332,12 @@ def main():
     redundancy_known_n = sum(1 for u in elevators.values()
                              if u["present"] and u["redundancy_known"])
 
+    # The longest running outage of an elevator that is actually in service.
+    # Sorting the raw feed put a removed escalator at the top of a stat grid
+    # that is otherwise entirely about elevators.
+    el_out = [r for r in current if r["kind"] == "Elevator" and r["present"]]
+    longest_el = max(el_out, key=lambda r: r["days_out"] or 0) if el_out else None
+
     headline = {
         "stations_total": len(st),
         "ada_full": ada_full,
@@ -313,21 +348,29 @@ def main():
                                 if u["kind"] == "Escalator" and u["present"]),
         "elevators_no_redundancy": no_redundancy,
         "redundancy_known": redundancy_known_n,
-        # Removed units still appear in the live feed under capital
-        # replacement. They are reported separately rather than counted as
-        # outages against a fleet they are no longer part of.
+        # Outages are counted against the operating fleet. Units that are not
+        # currently filing service hours still appear in the live feed, often
+        # for years under capital replacement; they are reported separately
+        # rather than counted as outages of machines that are running.
         "out_now": len([r for r in current
-                        if r["kind"] == "Elevator" and not r["removed"]]),
-        "out_now_removed": len([r for r in current
-                                if r["kind"] == "Elevator" and r["removed"]]),
+                        if r["kind"] == "Elevator" and r["present"]]),
+        "out_now_offline": len([r for r in current
+                                if r["kind"] == "Elevator" and not r["present"]]),
         "escalators_out_now": len([r for r in current
-                                   if r["kind"] == "Escalator" and not r["removed"]]),
+                                   if r["kind"] == "Escalator" and r["present"]]),
         "upcoming": len(upcoming),
         "cut_off_now": len(cut_off),
-        "longest_outage_days": current[0]["days_out"] if current else None,
-        "longest_outage_station": current[0]["station"] if current else None,
-        "entrapments_total": total_entrap,
+        "longest_outage_days": longest_el["days_out"] if longest_el else None,
+        "longest_outage_station": longest_el["station"] if longest_el else None,
+        "longest_outage_code": longest_el["code"] if longest_el else None,
+        "entrapment_events_total": total_entrap,
         "entrapments_first_year": first["entrapments"],
+        "fleet_inventory": sum(1 for u in elevators.values()
+                               if u["status_code"] != "RNOS"),
+        "never_report": sum(1 for u in elevators.values()
+                            if not u["ever_reported"]),
+        "orphan_units": orphan_units,
+        "fleet_month": latest_month,
         "entrapments_first_year_label": first["year"],
         "entrapments_latest_full": latest_full["entrapments"],
         "entrapments_latest_full_year": latest_full["year"],
@@ -371,12 +414,30 @@ def main():
         by_unit_month[r["equipment_code"]][r["month"][:7]] = pct
 
     grid = []
+    gap_stats = collections.Counter()
     for code, months in by_unit_month.items():
         u = units.get(code)
         if not u:
             continue
-        row = "".join(bucket(months[m]) if m in months else "-"
-                      for m in months_seen)
+        # Blank cells mean three different things and the page should not
+        # claim they all mean "not yet reporting": before a unit's first
+        # filing, after its last, and gaps in between.
+        idx = [i for i, m in enumerate(months_seen) if m in months]
+        first_i, last_i = (idx[0], idx[-1]) if idx else (0, -1)
+        chars = []
+        for i, m in enumerate(months_seen):
+            if m in months:
+                chars.append(bucket(months[m]))
+            elif i < first_i:
+                chars.append("-")      # not yet reporting
+                gap_stats["before"] += 1
+            elif i > last_i:
+                chars.append("x")      # stopped reporting
+                gap_stats["after"] += 1
+            else:
+                chars.append("g")      # gap in the filings
+                gap_stats["gap"] += 1
+        row = "".join(chars)
         grid.append({
             "code": code,
             "station": u["station"],
