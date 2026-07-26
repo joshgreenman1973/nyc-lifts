@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lifts - every elevator in the New York City subway, and whether it is working</title>
+<meta name="description" content="A live map and record of every elevator in the New York City subway: which stations have step-free access, what is broken right now, and eleven years of reliability.">
+<meta property="og:title" content="Lifts">
+<meta property="og:description" content="Every elevator in the New York City subway, and whether it is working right now.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --paper:#e9e9e6;
+  --card:#fcfcfb;
+  --ink:#101010;
+  --ink-60:#5c5c5a;
+  --rule:#101010;
+  --stamp:#c8102e;
+  --access:#0a3d91;
+  --grey:#9a9a96;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:'Archivo',system-ui,sans-serif;font-size:16px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding:0 18px}
+a{color:var(--access)}
+
+.cert{border:2px solid var(--rule);background:var(--card);margin:18px auto 0}
+.cert-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+  padding:10px 16px;border-bottom:1px solid var(--rule);
+  font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-60);flex-wrap:wrap}
+.wordmark{font-weight:900;font-size:clamp(64px,15vw,168px);line-height:.82;
+  letter-spacing:-.045em;padding:22px 16px 6px;margin:0}
+.wordmark .if{color:var(--stamp)}
+.deck{padding:0 16px 20px;font-size:clamp(17px,2.1vw,22px);max-width:34em;font-weight:400}
+.deck b{font-weight:600}
+
+.fields{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--rule)}
+.field{padding:12px 14px 14px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.field:nth-child(4n){border-right:none}
+.field .label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-60);display:block;margin-bottom:6px;min-height:2.4em}
+.field .val{font-family:'Archivo',sans-serif;font-weight:800;
+  font-size:clamp(28px,3.8vw,42px);line-height:1;letter-spacing:-.035em;
+  font-variant-numeric:tabular-nums}
+.field .val.stamp{color:var(--stamp)}
+.field .val.access{color:var(--access)}
+.field .sub{font-size:12px;color:var(--ink-60);margin-top:6px;line-height:1.3}
+
+section{margin:44px 0 0}
+.shead{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--rule);
+  padding-bottom:6px;margin-bottom:4px;flex-wrap:wrap}
+h2{font-size:clamp(24px,3.4vw,38px);font-weight:800;letter-spacing:-.025em;margin:0}
+h2 .but{color:var(--stamp)}
+.shead .note{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink-60)}
+.intro{max-width:62em;margin:12px 0 18px;font-size:16.5px}
+
+/* ---------- map ---------- */
+.mapshell{border:2px solid var(--rule);background:var(--card);margin-top:14px}
+#map{height:min(78vh,720px);background:#e4e4e0}
+.mapfoot{display:flex;gap:18px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--rule);
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-60);align-items:center}
+.key{display:flex;align-items:center;gap:6px}
+.key i{display:inline-block;border:1px solid var(--ink)}
+.k-full{width:13px;height:13px;border-radius:50%;background:var(--access)}
+.k-part{width:13px;height:13px;border-radius:50%;background:#7f9ac4}
+.k-none{width:8px;height:8px;border-radius:50%;background:var(--card)}
+.k-out{width:16px;height:16px;border-radius:50%;background:var(--stamp);border-width:2px}
+.leaflet-popup-content{font-family:'Archivo',sans-serif;margin:12px 14px}
+.pop-name{font-weight:800;font-size:16px;margin-bottom:2px}
+.pop-row{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-60)}
+.pop-row b{color:var(--ink)}
+
+/* ---------- alarm ---------- */
+.alarm{border:2px solid var(--stamp);background:var(--card);margin-top:14px}
+.alarm-top{background:var(--stamp);color:#fff;padding:8px 14px;
+  font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;
+  text-transform:uppercase;font-weight:600}
+.alarm-body{padding:14px 16px}
+.alarm-row{display:flex;justify-content:space-between;gap:14px;padding:10px 0;
+  border-bottom:1px dotted #bdbdba;flex-wrap:wrap}
+.alarm-row:last-child{border-bottom:none}
+.alarm-name{font-weight:800;font-size:20px;letter-spacing:-.01em}
+.alarm-meta{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-60);margin-top:3px}
+.alarm-days{font-family:'Archivo',sans-serif;font-weight:800;font-size:26px;color:var(--stamp);
+  white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.allclear{padding:16px;font-size:17px}
+
+/* ---------- duration bars ---------- */
+.bars{border:1px solid var(--rule);background:var(--card);margin-top:14px;padding:6px 0 12px}
+.bar{display:grid;grid-template-columns:minmax(140px,22%) 1fr auto;gap:12px;align-items:center;
+  padding:5px 14px;border-bottom:1px solid #ededea}
+.bar:last-child{border-bottom:none}
+.bar:hover{background:#f4f4f1}
+.bar-label{font-size:13px;font-weight:600;line-height:1.2;overflow:hidden}
+.bar-label span{display:block;font-family:'IBM Plex Mono',monospace;font-size:10px;
+  font-weight:400;color:var(--ink-60);text-transform:uppercase;letter-spacing:.04em}
+.bar-track{position:relative;height:17px}
+.bar-fill{position:absolute;left:0;top:0;height:100%;background:var(--stamp)}
+.bar-fill.esc{background:var(--ink)}
+.bar-fill.rem{background:var(--grey)}
+.bar-days{font-family:'Archivo',sans-serif;font-weight:800;font-size:14px;
+  font-variant-numeric:tabular-nums;min-width:66px;text-align:right}
+.bar-scale{display:grid;grid-template-columns:minmax(140px,22%) 1fr auto;gap:12px;
+  padding:4px 14px 8px;border-bottom:1px solid var(--rule);margin-bottom:4px}
+.bar-scale .rail{position:relative;height:13px}
+.bar-scale .rail span{position:absolute;top:0;transform:translateX(-50%);
+  font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink-60);white-space:nowrap}
+.bar-scale .rail span::before{content:"";position:absolute;left:50%;top:-4px;width:1px;height:4px;
+  background:var(--ink-60)}
+.bar-scale .pad{min-width:66px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+.filters button{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.05em;
+  text-transform:uppercase;padding:6px 11px;border:1px solid var(--rule);
+  background:transparent;color:var(--ink);cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-60);margin-left:auto}
+
+/* ---------- history grid ---------- */
+.gridwrap{border:1px solid var(--rule);background:var(--card);margin-top:14px;padding:12px 14px 14px;
+  overflow-x:auto}
+#grid{display:block;image-rendering:pixelated;width:100%;min-width:640px;height:auto}
+.gridkey{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;align-items:center;
+  font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-60)}
+.ramp{display:flex;border:1px solid var(--ink)}
+.ramp i{width:15px;height:11px;display:block}
+#grid-tip{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink);
+  min-height:1.4em;margin-top:8px}
+
+/* ---------- charts ---------- */
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px}
+.chart{border:1px solid var(--rule);background:var(--card);padding:14px}
+.chart h3{margin:0 0 2px;font-size:17px;font-weight:800;letter-spacing:-.01em}
+.chart .csub{font-size:13px;color:var(--ink-60);margin-bottom:10px;line-height:1.35}
+/* Scoped to the charts: a bare svg rule also captures Leaflet's vector
+   overlay and breaks the map's geometry. */
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.ax{font-family:'IBM Plex Mono',monospace;font-size:9.5px;fill:var(--ink-60)}
+.gl{stroke:#d3d3cf;stroke-width:1}
+.toggle{display:flex;gap:6px;margin-bottom:8px}
+.toggle button{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.05em;
+  text-transform:uppercase;padding:4px 8px;border:1px solid var(--rule);background:transparent;cursor:pointer}
+.toggle button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+
+/* ---------- table ---------- */
+details.full{margin-top:16px;border:1px solid var(--rule);background:var(--card)}
+details.full summary{padding:10px 14px;cursor:pointer;font-family:'IBM Plex Mono',monospace;
+  font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.tablewrap{overflow-x:auto;border-top:1px solid var(--rule)}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:14px}
+th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--ink-60);padding:9px 12px;border-bottom:1px solid var(--rule);
+  white-space:nowrap;background:var(--card)}
+td{padding:9px 12px;border-bottom:1px solid #dededa;vertical-align:top}
+tr:last-child td{border-bottom:none}
+.mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.st-name{font-weight:600}
+.tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.06em;
+  text-transform:uppercase;padding:2px 5px;border:1px solid currentColor;margin-right:4px;white-space:nowrap}
+.tag.ada{color:var(--access)}
+.tag.sole{color:var(--stamp);font-weight:600}
+.tag.rem{color:var(--ink-60)}
+.serving{color:var(--ink-60);font-size:12.5px;display:block;margin-top:3px}
+
+.prose{max-width:62em;font-size:16.5px}
+.prose p{margin:0 0 14px}
+.prose ul{margin:0 0 14px;padding-left:20px}
+.prose li{margin-bottom:8px}
+
+footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font-size:14px;color:var(--ink-60)}
+.srcs{font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.7}
+.caution-btn{display:inline-block;margin-top:16px;background:#6b1220;color:#fff;border:none;
+  font-family:'Archivo',sans-serif;font-size:14px;font-weight:600;padding:9px 15px;cursor:pointer}
+.caution-btn:hover{background:#83162a}
+.caution{display:none;background:#0f2038;color:#fff;padding:16px 18px;margin-top:10px;
+  max-width:62em;font-size:14.5px;line-height:1.5}
+.caution.open{display:block}
+.caution p{margin:0 0 10px}
+.caution p:last-child{margin:0}
+
+@media (max-width:900px){
+  .fields{grid-template-columns:repeat(2,1fr)}
+  .field:nth-child(4n){border-right:1px solid var(--rule)}
+  .field:nth-child(2n){border-right:none}
+  .charts{grid-template-columns:1fr}
+  .bar{grid-template-columns:minmax(110px,34%) 1fr auto}
+}
+@media (max-width:560px){ .wordmark{font-size:74px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="cert">
+  <div class="cert-head">
+    <span>New York City Transit &middot; elevator and escalator record</span>
+    <span id="stamp-date">loading</span>
+  </div>
+  <h1 class="wordmark">L<span class="if">if</span>ts</h1>
+  <p class="deck">Every elevator in the New York City subway, and whether it is working right now. The system reports <b>97 percent availability</b>. That number is true. It is also not the number a rider in a wheelchair needs, which is whether <b>the one elevator at their station</b> is running today.</p>
+  <div class="fields" id="fields"></div>
+</div>
+
+<section id="mapsec">
+  <div class="shead">
+    <h2>The subway you can actually enter</h2>
+    <span class="note">445 station complexes</span>
+  </div>
+  <p class="intro">Every station in the system, drawn on its own lines. Solid blue is step-free access. The small hollow marks are stations with none, and there are more of them than everything else combined. Red is a station whose accessible elevators are all out right now. Click any station for its record.</p>
+  <div class="mapshell">
+    <div id="map"></div>
+    <div class="mapfoot">
+      <span class="key"><i class="k-full"></i>Full step-free access <b id="k-full-n"></b></span>
+      <span class="key"><i class="k-part"></i>Partial <b id="k-part-n"></b></span>
+      <span class="key"><i class="k-none"></i>No step-free access <b id="k-none-n"></b></span>
+      <span class="key"><i class="k-out"></i>All accessible elevators out now</span>
+    </div>
+  </div>
+</section>
+
+<section id="cutoff">
+  <div class="shead">
+    <h2>No way in</h2>
+    <span class="note">stations where every accessible elevator is out</span>
+  </div>
+  <p class="intro">A station is only step-free if its elevators run. When every elevator designated accessible at a complex is out at once, the station is, for that day, a staircase.</p>
+  <div id="cutoff-body"></div>
+</section>
+
+<section id="board">
+  <div class="shead">
+    <h2>How long it has been broken</h2>
+    <span class="note" id="board-updated"></span>
+  </div>
+  <p class="intro">Each bar is one unit the Metropolitan Transportation Authority currently reports out of service, drawn to the number of days it has been out. The scale is square root, because otherwise the two year outages would flatten everything else to nothing.</p>
+  <div class="filters">
+    <button data-f="all" aria-pressed="true">All</button>
+    <button data-f="EL" aria-pressed="false">Elevators</button>
+    <button data-f="ES" aria-pressed="false">Escalators</button>
+    <button data-f="ada" aria-pressed="false">Accessibility critical</button>
+    <button data-f="sole" aria-pressed="false">Sole elevator</button>
+    <button data-f="notrem" aria-pressed="false">Exclude removed</button>
+    <span class="count" id="board-count"></span>
+  </div>
+  <div class="bars" id="bars"></div>
+  <details class="full">
+    <summary>Open the full list, with reasons and estimated return dates</summary>
+    <div class="tablewrap">
+      <table id="board-table">
+        <thead><tr><th>Days</th><th>Station</th><th>Unit</th><th>Reason given</th><th>Estimated return</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<section id="history">
+  <div class="shead">
+    <h2>Eleven years, one elevator per line</h2>
+    <span class="note" id="grid-note"></span>
+  </div>
+  <p class="intro">Every elevator in the system is a single horizontal line. Every month since January 2015 is a step along it. The darker the mark, the more of that month the elevator was out; grey means the unit was not yet reporting. Read down for the fleet, across for one machine's life. The long dark runs are capital replacements. The scattered flecks are ordinary breakdowns, and there are a lot of them: only one unit-month in six is above 99.5 percent availability.</p>
+  <div class="gridwrap">
+    <canvas id="grid"></canvas>
+    <div id="grid-tip">Hover the grid for a unit and month.</div>
+    <div class="gridkey">
+      <span>More out</span>
+      <span class="ramp" id="ramp"></span>
+      <span>Fully in service</span>
+      <span style="margin-left:auto" id="grid-count"></span>
+    </div>
+  </div>
+</section>
+
+<section id="record">
+  <div class="shead">
+    <h2>The record since 2015</h2>
+    <span class="note" id="record-note"></span>
+  </div>
+  <p class="intro">Elevator availability is the best it has been in a decade. The number of people shut inside a stopped elevator is also near its highest. Both are true at once, which is why one number cannot carry this story.</p>
+  <div class="charts">
+    <div class="chart">
+      <h3>Availability</h3>
+      <div class="csub">Share of all hours the average unit was in service, computed from summed hours rather than averaged percentages.</div>
+      <div class="toggle" id="avail-toggle">
+        <button data-z="0" aria-pressed="true">Zoomed</button>
+        <button data-z="1" aria-pressed="false">Zero baseline</button>
+      </div>
+      <div id="chart-avail"></div>
+    </div>
+    <div class="chart">
+      <h3>Entrapments</h3>
+      <div class="csub">Riders shut inside a stopped elevator, as counted by New York City Transit. Escalators record effectively none.</div>
+      <div class="toggle" id="ent-toggle">
+        <button data-z="0" aria-pressed="true">Total</button>
+        <button data-z="1" aria-pressed="false">Per 100 elevators</button>
+      </div>
+      <div id="chart-ent"></div>
+    </div>
+  </div>
+</section>
+
+<section id="buttons">
+  <div class="shead">
+    <h2><span class="but">But</span>tons</h2>
+    <span class="note">what these numbers do not press</span>
+  </div>
+  <div class="prose">
+    <p>Every figure here comes from the Metropolitan Transportation Authority's own published data. That is a strength and a limit at once. What the record does not capture:</p>
+    <ul>
+      <li><b>An elevator counted as available can still fail you.</b> Availability is measured in hours in service. It does not measure whether the car was filthy, whether the door held, or whether it was running when you happened to arrive.</li>
+      <li><b>"No way in" is deliberately conservative.</b> A station appears only when every elevator marked accessible there is out in the live feed. Many complexes need several elevators in sequence to get from street to platform, so a single outage can strand a rider at a station this page still counts as open.</li>
+      <li><b>Two MTA sources disagree, and this page takes the cautious side.</b> The equipment inventory marks <span id="disputed-n"></span> accessible elevators as installed but not functioning while the live outage feed does not list them as out. Calling a station inaccessible is the strongest claim here, so it is made only on the continuously updated feed.</li>
+      <li><b>Removed is not the same as broken.</b> Units pulled out for capital replacement still appear in the live feed. They are shown in grey and kept out of the count of working elevators that are down, because they are no longer part of the fleet.</li>
+      <li><b>Redundancy is the agency's judgment, not a measurement.</b> The inventory records whether a unit has a redundant elevator. Where that field is blank, this page makes no claim.</li>
+      <li><b>Entrapment counts are reports, not injuries.</b> The data records that riders were shut inside and freed. It says nothing about how long they waited or what happened to them.</li>
+      <li><b>Most of the subway is not in this story at all.</b> Step-free access exists at a minority of stations. A perfect reliability score would still leave most of the system unreachable.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="method">
+  <div class="shead"><h2>How this was built</h2></div>
+  <div class="prose">
+    <p>Six public feeds, refreshed automatically. Full detail is in the <a href="METHODOLOGY.html">methodology</a>.</p>
+    <ul>
+      <li><b>Live outages</b> come from the agency's public elevator and escalator feed, read directly with no key.</li>
+      <li><b>Reliability</b> comes from monthly per-unit availability filings beginning January 2015. Percentages are recomputed from summed hours available over summed hours total. Averaging the published per-unit percentages would let a unit tracked for one month count as heavily as one tracked for eleven years.</li>
+      <li><b>Accessibility status and redundancy</b> come from the station complex list and the equipment inventory, joined on the agency's station complex identifier. The join was verified by spot check before use.</li>
+      <li><b>Ridership</b> is the trailing twelve months of complex level counts, used only to describe how many trips a closure touches.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="srcs" id="srcs"></div>
+  <button class="caution-btn" id="caution-btn">And please read this AI caution.</button>
+  <div class="caution" id="caution">
+    <p>Everything substantive here (the concept, the choice of data, the questions asked of it and the desired layout) was directed by the author, a human. The coding, the data plumbing and the file wrangling were primarily in the hands of Anthropic's Claude and Claude Code, under close and skeptical direction.</p>
+    <p>Quality control actually performed on this project: the station identifier join was verified by spot check against named stations before any figure was computed; availability was recomputed from summed hours rather than averaged percentages; entrapment totals were reconciled against a server side sum of the source dataset; equipment that has been physically removed was separated from equipment that is merely broken, after a discrepancy between two MTA files was found and traced; the fetch scripts fail loudly and refuse to publish rather than write an empty or truncated file; and every headline number was independently recomputed from the raw files by a reviewer working blind, with no knowledge of how the page was built.</p>
+    <p>The risks of using AI remain. If you spot a red flag in anything presented here, please say so.</p>
+  </div>
+</footer>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const F = n => (n===null||n===undefined||isNaN(n)) ? "-" : Number(n).toLocaleString("en-US");
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let D=null, LINES=null;
+
+Promise.all([
+  fetch("data/lifts.json").then(r=>r.json()),
+  fetch("data/subway_lines.geojson").then(r=>r.ok?r.json():null).catch(()=>null)
+]).then(([d,l])=>{ D=d; LINES=l; render(); })
+ .catch(e=>{ document.getElementById("fields").innerHTML =
+   '<div class="field" style="grid-column:1/-1"><span class="label">Error</span>'+
+   '<div class="val stamp">Data unavailable</div></div>'; console.error(e); });
+
+function render(){
+  const h=D.headline;
+  document.getElementById("stamp-date").textContent =
+    "Live reading "+new Date(D.generated_at).toLocaleString("en-US",
+      {month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"});
+  document.getElementById("disputed-n").textContent = h.disputed_units;
+
+  const fields=[
+    {label:"Elevators out of service now", val:h.out_now, cls:"stamp",
+     sub:"of "+F(h.elevators_total)+" installed, plus "+h.out_now_removed+" removed for replacement"},
+    {label:"Stations with no step-free access right now", val:h.cut_off_now,
+     cls:h.cut_off_now>0?"stamp":"", sub:"every accessible elevator out at once"},
+    {label:"Station complexes with full accessibility", val:h.ada_full, cls:"access",
+     sub:"of "+F(h.stations_total)+" total, plus "+h.ada_partial+" partial"},
+    {label:"Elevators with no redundant elevator", val:h.elevators_no_redundancy,
+     sub:"of "+F(h.redundancy_known)+" where the agency records an answer"},
+    {label:"Longest outage running now", val:Math.round(h.longest_outage_days)+" d",
+     cls:"stamp", sub:esc(h.longest_outage_station)},
+    {label:"Riders trapped in elevators since 2015", val:F(h.entrapments_total),
+     sub:F(h.entrapments_latest_full)+" in "+h.entrapments_latest_full_year+
+         ", about "+h.entrapments_per_day_recent+" a day"},
+    {label:"Elevator availability, "+h.entrapments_latest_full_year, val:h.availability_latest+"%",
+     sub:"up from "+h.availability_first+"% in "+h.entrapments_first_year_label},
+    {label:"Downtime that leaves per elevator", val:h.downtime_days_per_elevator+" d",
+     sub:"a year, at the current rate"}
+  ];
+  document.getElementById("fields").innerHTML = fields.map(f=>
+    `<div class="field"><span class="label">${f.label}</span>
+     <div class="val ${f.cls||""}">${f.val}</div><div class="sub">${f.sub||""}</div></div>`).join("");
+
+  document.getElementById("k-full-n").textContent = h.ada_full;
+  document.getElementById("k-part-n").textContent = h.ada_partial;
+  document.getElementById("k-none-n").textContent = h.ada_none;
+
+  drawCutoff();
+  drawBoard();
+  drawGrid();
+  drawCharts();
+  drawMap();
+
+  document.getElementById("srcs").innerHTML =
+    "Sources: Metropolitan Transportation Authority elevator and escalator live outage feed; "+
+    "MTA New York City Transit subway elevator and escalator availability, beginning 2015; "+
+    "MTA subway elevator and escalator asset inventory; MTA subway stations and complexes; "+
+    "MTA subway station monthly ridership; MTA subway service lines. Data read "+
+    new Date(D.fetched_at).toLocaleString("en-US")+". Reliability figures run through "+
+    D.headline.data_through+".";
+}
+
+function drawCutoff(){
+  const cb=document.getElementById("cutoff-body");
+  if(!D.cut_off.length){
+    cb.innerHTML='<div class="alarm" style="border-color:var(--ink)"><div class="allclear">'+
+      'No station currently has all of its accessible elevators out. That is the good case, '+
+      'and it is not the usual one.</div></div>'; return;
+  }
+  cb.innerHTML='<div class="alarm"><div class="alarm-top">'+D.cut_off.length+' station'+
+    (D.cut_off.length>1?'s':'')+' with no working step-free access</div><div class="alarm-body">'+
+    D.cut_off.map(c=>`<div class="alarm-row"><div>
+      <div class="alarm-name">${esc(c.name)}</div>
+      <div class="alarm-meta">${esc(c.borough||"")} &middot; ${c.ada_elevators} accessible elevator${c.ada_elevators>1?'s':''}, all out${
+        c.riders12?" &middot; "+F(Math.round(c.riders12))+" trips in the past year":""}</div>
+    </div><div class="alarm-days">${Math.round(c.longest_days)} d</div></div>`).join("")+'</div></div>';
+}
+
+/* ---------------- duration bars ---------------- */
+let filter="all";
+function boardRows(){
+  let r=D.current.slice();
+  if(filter==="EL") r=r.filter(x=>x.kind==="Elevator");
+  if(filter==="ES") r=r.filter(x=>x.kind==="Escalator");
+  if(filter==="ada") r=r.filter(x=>x.ada);
+  if(filter==="sole") r=r.filter(x=>x.redundancy_known && !x.redundant);
+  if(filter==="notrem") r=r.filter(x=>!x.removed);
+  return r.sort((a,b)=>(b.days_out||0)-(a.days_out||0));
+}
+function drawBoard(){
+  const r=boardRows();
+  document.getElementById("board-updated").textContent =
+    "reported "+new Date(D.fetched_at).toLocaleString("en-US",
+      {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
+  document.getElementById("board-count").textContent =
+    r.length+" shown of "+D.current.length+" out now";
+  const max=Math.max(...D.current.map(x=>x.days_out||0),1);
+  const w=d=>Math.max(0.6,100*Math.sqrt(Math.max(d,0))/Math.sqrt(max));
+  const ticks=[1,7,30,90,182,365,730].filter(t=>t<=max);
+  document.getElementById("bars").innerHTML =
+    `<div class="bar-scale"><div></div><div class="rail">
+       <span style="left:0;transform:none">0</span>${ticks.map(t=>
+       `<span style="left:${w(t)}%">${t===365?"1 yr":t===730?"2 yr":t===182?"6 mo":t+" d"}</span>`).join("")}
+     </div><div class="pad"></div></div>`+
+    r.map(x=>{
+      const cls = x.removed?"rem":(x.kind==="Escalator"?"esc":"");
+      return `<div class="bar" title="${esc(x.reason||"")}">
+        <div class="bar-label">${esc(x.station)}<span>${x.kind} ${esc(x.code)}${
+          x.ada?" &middot; accessibility":""}${x.removed?" &middot; removed":""}</span></div>
+        <div class="bar-track"><div class="bar-fill ${cls}" style="width:${w(x.days_out)}%"></div></div>
+        <div class="bar-days">${x.days_out!=null?Math.round(x.days_out):"-"} d</div></div>`;
+    }).join("");
+  document.querySelector("#board-table tbody").innerHTML = r.map(x=>{
+    const sole=x.redundancy_known && !x.redundant && x.kind==="Elevator";
+    const eta=x.eta?new Date(x.eta).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"not given";
+    return `<tr><td class="mono">${x.days_out!=null?Math.round(x.days_out):"-"}</td>
+      <td><span class="st-name">${esc(x.station)}</span>${x.serving?`<span class="serving">${esc(x.serving)}</span>`:""}</td>
+      <td class="mono">${x.kind} ${esc(x.code)}<br>${x.ada?'<span class="tag ada">Accessibility</span>':""}
+        ${sole?'<span class="tag sole">Sole elevator</span>':""}${x.removed?'<span class="tag rem">Removed</span>':""}</td>
+      <td>${esc(x.reason||"not given")}</td><td class="mono">${eta}</td></tr>`;
+  }).join("");
+}
+document.querySelectorAll(".filters button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    filter=b.dataset.f;
+    document.querySelectorAll(".filters button").forEach(o=>
+      o.setAttribute("aria-pressed",o===b?"true":"false"));
+    drawBoard();
+  });
+});
+
+/* ---------------- history grid ---------------- */
+/* index 0 = fully in service, 9 = worst. Most unit-months sit between 98 and
+   100 percent, so the pale end is stretched and the saturated end is held
+   back for genuine failures. */
+const RAMP=["#fdfcfc","#f9eff1","#f4e0e4","#edcbd2","#e3aeb8","#d68c9a","#c66679","#b04156","#8f2438","#5e0d1c"];
+function drawGrid(){
+  const cv=document.getElementById("grid"), months=D.grid_months, rows=D.grid;
+  const cw=Math.max(3,Math.floor(1100/months.length)), rh=3;
+  const W=months.length*cw, H=rows.length*rh;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+"/"+H;
+  const ctx=cv.getContext("2d"); ctx.scale(dpr,dpr);
+  ctx.fillStyle="#fcfcfb"; ctx.fillRect(0,0,W,H);
+  rows.forEach((g,y)=>{
+    for(let x=0;x<months.length;x++){
+      const c=g.row[x];
+      if(c==="-"){ ctx.fillStyle="#e9e9e6"; }
+      else { ctx.fillStyle=RAMP[9-parseInt(c,10)]; }
+      ctx.fillRect(x*cw,y*rh,cw,rh);
+    }
+  });
+  document.getElementById("ramp").innerHTML=RAMP.slice().reverse().map(c=>`<i style="background:${c}"></i>`).join("");
+  document.getElementById("grid-count").textContent=rows.length+" elevators × "+months.length+" months";
+  document.getElementById("grid-note").textContent=months[0]+" to "+months[months.length-1];
+  const tip=document.getElementById("grid-tip");
+  cv.addEventListener("mousemove",e=>{
+    const r=cv.getBoundingClientRect();
+    const x=Math.floor((e.clientX-r.left)/(r.width/months.length));
+    const y=Math.floor((e.clientY-r.top)/(r.height/rows.length));
+    if(x<0||y<0||x>=months.length||y>=rows.length){tip.textContent="";return;}
+    const g=rows[y], c=g.row[x];
+    const band=c==="-"?"not yet reporting":
+      ({"9":"99.5% or better","8":"99 to 99.5%","7":"98 to 99%","6":"97 to 98%","5":"95 to 97%",
+        "4":"90 to 95%","3":"80 to 90%","2":"60 to 80%","1":"30 to 60%","0":"under 30%"})[c]+" in service";
+    tip.textContent=`${g.station} · ${g.code}${g.ada?" (accessibility)":""} · ${months[x]} · ${band}`;
+  });
+  cv.addEventListener("mouseleave",()=>{tip.textContent="Hover the grid for a unit and month."});
+}
+
+/* ---------------- charts ---------------- */
+let availZero=false, entPer=false;
+function drawCharts(){
+  drawAvail(D.trend.filter(t=>t.kind==="Elevator"), D.trend.filter(t=>t.kind==="Escalator"));
+  drawEnt(D.trend.filter(t=>t.kind==="Elevator"));
+  document.getElementById("record-note").textContent =
+    "through "+D.headline.data_through+"; "+D.headline.months_in_latest_year+
+    " months of the latest year";
+}
+document.getElementById("avail-toggle").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  availZero=b.dataset.z==="1";
+  document.querySelectorAll("#avail-toggle button").forEach(o=>o.setAttribute("aria-pressed",o===b?"true":"false"));
+  drawCharts();
+});
+document.getElementById("ent-toggle").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  entPer=b.dataset.z==="1";
+  document.querySelectorAll("#ent-toggle button").forEach(o=>o.setAttribute("aria-pressed",o===b?"true":"false"));
+  drawCharts();
+});
+function drawAvail(el,es){
+  const W=520,H=250,P={t:12,r:12,b:26,l:36};
+  const lo=availZero?0:Math.min(85,Math.floor(Math.min(...es.map(d=>d.availability))-1)), hi=100;
+  const x=i=>P.l+i*(W-P.l-P.r)/(el.length-1), y=v=>P.t+(hi-v)/(hi-lo)*(H-P.t-P.b);
+  const line=a=>a.map((d,i)=>(i?"L":"M")+x(i)+","+y(d.availability)).join("");
+  let ticks=[]; const step=availZero?25:5;
+  for(let v=Math.ceil(lo/step)*step; v<=hi; v+=step) ticks.push(v);
+  document.getElementById("chart-avail").innerHTML=
+   `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Availability by year">
+    ${ticks.map(v=>`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y(v)}" y2="${y(v)}"/>
+      <text class="ax" x="${P.l-6}" y="${y(v)+3}" text-anchor="end">${v}%</text>`).join("")}
+    <path d="${line(el)}" fill="none" stroke="var(--access)" stroke-width="2.5"/>
+    <path d="${line(es)}" fill="none" stroke="var(--stamp)" stroke-width="2" stroke-dasharray="4 3"/>
+    ${el.map((d,i)=>`<circle cx="${x(i)}" cy="${y(d.availability)}" r="${d.partial?3.5:2.5}"
+      fill="${d.partial?'var(--card)':'var(--access)'}" stroke="var(--access)" stroke-width="1.5"/>`).join("")}
+    ${el.map((d,i)=>(i%2===0||i===el.length-1)?
+      `<text class="ax" x="${x(i)}" y="${H-8}" text-anchor="middle">${String(d.year).slice(2)}</text>`:"").join("")}
+    <text class="ax" x="${x(el.length-1)}" y="${y(el[el.length-1].availability)-9}" text-anchor="end"
+      fill="var(--access)" font-weight="600">Elevators</text>
+    <text class="ax" x="${x(es.length-1)}" y="${y(es[es.length-1].availability)+14}" text-anchor="end"
+      fill="var(--stamp)" font-weight="600">Escalators</text></svg>
+   <div class="csub" style="margin-top:8px">Hollow point marks a partial year (${D.headline.months_in_latest_year} months of ${el[el.length-1].year}).</div>`;
+}
+function drawEnt(el){
+  const W=520,H=250,P={t:12,r:12,b:26,l:40};
+  const key=entPer?"entrapments_per_100_units":"entrapments";
+  const hi=Math.ceil(Math.max(...el.map(d=>d[key]))/(entPer?50:250))*(entPer?50:250);
+  const bw=(W-P.l-P.r)/el.length, y=v=>P.t+(1-v/hi)*(H-P.t-P.b);
+  let ticks=[]; for(let v=0;v<=hi;v+=hi/4) ticks.push(v);
+  document.getElementById("chart-ent").innerHTML=
+   `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Entrapments by year">
+    ${ticks.map(v=>`<line class="gl" x1="${P.l}" x2="${W-P.r}" y1="${y(v)}" y2="${y(v)}"/>
+      <text class="ax" x="${P.l-6}" y="${y(v)+3}" text-anchor="end">${v}</text>`).join("")}
+    ${el.map((d,i)=>{const v=d[key],hh=Math.max(0,(H-P.t-P.b)-(y(v)-P.t));
+      return `<rect x="${P.l+i*bw+bw*0.16}" y="${y(v)}" width="${bw*0.68}" height="${hh}"
+        fill="${d.partial?'none':'var(--stamp)'}" stroke="var(--stamp)" stroke-width="${d.partial?1.5:0}"
+        ${d.partial?'stroke-dasharray="3 2"':''}><title>${d.year}: ${v}${d.partial?' (partial year)':''}</title></rect>`;}).join("")}
+    ${el.map((d,i)=>(i%2===0||i===el.length-1)?
+      `<text class="ax" x="${P.l+i*bw+bw/2}" y="${H-8}" text-anchor="middle">${String(d.year).slice(2)}</text>`:"").join("")}</svg>
+   <div class="csub" style="margin-top:8px">Outlined bar is a partial year. ${entPer?
+     "Normalised by elevators reporting that year.":"Raw counts. Switch to per 100 elevators to control for a growing fleet."}</div>`;
+}
+
+/* ---------------- map ---------------- */
+function drawMap(){
+  const map=L.map("map",{scrollWheelZoom:false,zoomControl:true}).setView([40.735,-73.94],11);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+    {attribution:'&copy; OpenStreetMap, &copy; CARTO, station and elevator data: MTA',maxZoom:18,opacity:.55}).addTo(map);
+  if(LINES){
+    L.geoJSON(LINES,{style:{color:"#101010",weight:1.6,opacity:.5}}).addTo(map);
+  }
+  const order=s=>s.cut_off?3:(s.ada===1?2:(s.ada===2?1:0));
+  D.stations.slice().sort((a,b)=>order(a)-order(b)).forEach(s=>{
+    if(s.lat==null||s.lon==null) return;
+    const cut=s.cut_off, fill=cut?"#c8102e":s.ada===1?"#0a3d91":s.ada===2?"#7f9ac4":"#fcfcfb";
+    L.circleMarker([s.lat,s.lon],{
+      radius:cut?9:s.ada?5.5:2.6, fillColor:fill, fillOpacity:s.ada||cut?.95:.85,
+      color:"#101010", weight:cut?2.2:.9
+    }).addTo(map).bindPopup(
+      `<div class="pop-name">${esc(s.name)}</div>
+       <div class="pop-row">${esc(s.borough||"")} &middot; ${
+         s.ada===1?"<b>Full step-free access</b>":s.ada===2?"<b>Partial step-free access</b>":"No step-free access"}</div>
+       ${s.elevators?`<div class="pop-row">Elevators: <b>${s.elevators}</b>${
+         s.out_now?`, <b style="color:#c8102e">${s.out_now} out now</b>`:""}</div>`:""}
+       ${s.availability!=null?`<div class="pop-row">Availability, past ${D.recent_window.months} months: <b>${s.availability.toFixed(1)}%</b></div>`:""}
+       ${s.entrapments?`<div class="pop-row">Entrapments in that window: <b>${s.entrapments}</b></div>`:""}
+       ${s.riders12?`<div class="pop-row">Trips in the past year: <b>${F(Math.round(s.riders12))}</b></div>`:""}`);
+  });
+}
+
+document.getElementById("caution-btn").addEventListener("click",()=>{
+  document.getElementById("caution").classList.toggle("open");
+});
+</script>
+</body>
+</html>

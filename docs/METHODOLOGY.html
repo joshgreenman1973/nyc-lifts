@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lifts - methodology</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#e9e9e6;--card:#fcfcfb;--ink:#101010;--ink-60:#5c5c5a;--stamp:#c8102e;--access:#0a3d91}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Archivo',system-ui,sans-serif;
+  font-size:16.5px;line-height:1.55}
+.wrap{max-width:52em;margin:0 auto;padding:0 18px 70px}
+.cert{border:2px solid var(--ink);background:var(--card);margin:18px 0 0;padding:0 0 18px}
+.cert-head{padding:10px 16px;border-bottom:1px solid var(--ink);font-family:'IBM Plex Mono',monospace;
+  font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-60)}
+h1{font-weight:900;font-size:clamp(34px,7vw,60px);letter-spacing:-.04em;margin:18px 16px 6px;line-height:.95}
+h1 .if{color:var(--stamp)}
+.sub{margin:0 16px;color:var(--ink-60);font-size:15px}
+h2{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:34px 0 8px;
+  border-bottom:2px solid var(--ink);padding-bottom:5px}
+h3{font-size:17px;font-weight:800;margin:22px 0 5px}
+p{margin:0 0 13px}
+ul{padding-left:20px;margin:0 0 13px}
+li{margin-bottom:8px}
+code{font-family:'IBM Plex Mono',monospace;font-size:13.5px;background:#dededa;padding:1px 5px}
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:10px 0 16px;background:var(--card)}
+th,td{text-align:left;padding:8px 10px;border:1px solid #cfcfcb;vertical-align:top}
+th{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-60)}
+a{color:var(--access)}
+.back{display:inline-block;margin:16px 0 0;font-family:'IBM Plex Mono',monospace;font-size:12px;
+  letter-spacing:.06em;text-transform:uppercase}
+.warn{border-left:4px solid var(--stamp);padding:2px 0 2px 14px;margin:0 0 13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="cert">
+  <div class="cert-head">New York City Transit &middot; elevator and escalator record &middot; methodology</div>
+  <h1>L<span class="if">if</span>ts</h1>
+  <p class="sub">How every number on this site is produced, and what it can and cannot support.</p>
+</div>
+
+<a class="back" href="index.html">&larr; Back to the record</a>
+
+<h2>Sources</h2>
+<p>Six feeds, all public, all from the Metropolitan Transportation Authority. Nothing here is scraped from a web page and nothing is hand entered.</p>
+<table>
+<tr><th>What</th><th>Source</th><th>Used for</th></tr>
+<tr><td>Live elevator and escalator outages</td>
+    <td>MTA public elevator and escalator feed (<code>nyct_ene.json</code>), read directly with no API key</td>
+    <td>Everything labelled "right now": the outage bars, the cut-off list, the map's red rings</td></tr>
+<tr><td>Monthly availability per unit, from January 2015</td>
+    <td>data.ny.gov <code>rc78-7x78</code></td>
+    <td>The eleven year grid, the availability and entrapment charts, station and unit reliability</td></tr>
+<tr><td>Equipment inventory</td>
+    <td>data.ny.gov <code>94fv-bak7</code></td>
+    <td>Which units are elevators, which are accessibility designated, which have a redundant elevator, which have been removed</td></tr>
+<tr><td>Station complexes</td>
+    <td>data.ny.gov <code>5f5g-n3cz</code></td>
+    <td>Accessibility status, coordinates, names</td></tr>
+<tr><td>Station ridership</td>
+    <td>data.ny.gov <code>ak4z-sape</code></td>
+    <td>Trailing twelve month trip counts, used only to describe scale</td></tr>
+<tr><td>Subway service lines</td>
+    <td>data.ny.gov <code>s692-irgq</code></td>
+    <td>Map geometry</td></tr>
+</table>
+
+<h2>How availability is calculated</h2>
+<p>The source publishes, for each unit and each month, hours available and hours total. Every percentage on this site is recomputed as the sum of hours available divided by the sum of hours total across whatever group is being described.</p>
+<p>It is not the average of the published per-unit percentages. That distinction matters: averaging ratios would let a unit that reported for a single month weigh as heavily as one that reported for eleven years, and would let a brand new elevator installed in December pull a whole year's figure around.</p>
+
+<h3>Partial years</h3>
+<p>The latest calendar year is incomplete. It is drawn with a hollow marker on the availability chart and an outlined bar on the entrapment chart, and it is excluded from any "latest full year" figure quoted on the front page.</p>
+
+<h2>The three states a unit can be in</h2>
+<p>The inventory records a service status that turns out to matter a great deal, because the naive reading produces wrong counts in both directions.</p>
+<ul>
+  <li><b>In service</b> (<code>IFIS</code>): installed and working. 446 elevators.</li>
+  <li><b>Installed but not functioning</b> (<code>INOS</code>, <code>IFOS</code>): the station still has the machine, it is not running. 9 elevators.</li>
+  <li><b>Removed</b> (<code>RNOS</code>): physically taken out, generally for capital replacement. 20 elevators.</li>
+</ul>
+<p>Removed units are excluded from the fleet: a station should not be credited with an elevator that no longer exists, and a removed unit should not be counted as a broken one. But those units do keep appearing in the live outage feed, some for more than 600 days. They are shown on the outage bars in grey, labelled "removed", and excluded from the count of working elevators currently down. The front page reports both numbers.</p>
+
+<h2>When a station counts as having no way in</h2>
+<p>A station complex appears in "No way in" when <em>every</em> elevator at that complex marked accessibility compliant, and not removed, is listed as out in the live feed.</p>
+<div class="warn">
+<p>This is deliberately conservative, in two directions worth stating plainly.</p>
+<p><b>It undercounts.</b> Many complexes require several elevators in sequence to get from street to platform. One broken elevator in that chain can strand a rider at a station this page still counts as open, because another accessible elevator elsewhere in the complex is running.</p>
+<p><b>It resolves a conflict between two MTA files in favour of the cautious answer.</b> The inventory marks a small number of accessibility elevators as installed but not functioning while the live feed does not list them as out. Treating those as broken would add stations to the list, including a major Manhattan complex. Because calling a station inaccessible is the strongest claim this site makes, it is made only on the continuously updated live feed, and the number of units in that grey zone is reported on the front page.</p>
+</div>
+
+<h2>Joins</h2>
+<p>The availability and inventory files identify stations by a complex reference number; the station list uses a complex identifier. These are the same numbering, which was confirmed by spot check against named stations (complex 451 resolves to Junction Blvd and complex 146 to 181 St in both files) before any figure was computed. Every equipment code in the live feed resolves to a record in the inventory, with no unmatched units.</p>
+<p>Ridership is joined on the same complex identifier. Of 445 complexes, 426 have ridership in the trailing window; the remainder are shown without a trip count rather than with a zero.</p>
+
+<h2>The eleven year grid</h2>
+<p>One row per elevator, one cell per month, ordered by borough and station. Each cell is bucketed by that month's availability. The buckets are deliberately fine at the top end and coarse at the bottom, because most unit-months sit between 98 and 100 percent and that is where the differences are legible.</p>
+<p>Escalators are excluded from the grid. They are a different machine answering a different question, and mixing them would double the rows while diluting the accessibility story. They remain in the availability chart, drawn separately, and on the outage bars.</p>
+
+<h2>Entrapments</h2>
+<p>An entrapment is a rider shut inside a stopped elevator. The figure is the agency's own count. Escalators record effectively none across the whole period, which is what you would expect and which is a useful check that the field means what it appears to mean.</p>
+<p>The chart offers a per-100-elevators view because the fleet grows over the period. Absolute counts rising while the fleet grows is a weaker claim than the rate rising, and the toggle lets a reader see which is happening.</p>
+
+<h2>What this cannot tell you</h2>
+<ul>
+  <li>Whether an elevator was working at the moment you needed it. Availability is hours per month.</li>
+  <li>Whether a station is usable in practice: entrance placement, distance, staffing and out-of-system transfers are not in this data.</li>
+  <li>Anything about accessibility beyond elevators. Ramps, gap fillers, tactile edges, audio announcements and platform level boarding are not covered.</li>
+  <li>Whether a scheduled replacement is going well or badly. A year of downtime for a capital project and a year of downtime from neglect look identical here.</li>
+  <li>Long Island Rail Road and Metro-North have their own equipment and their own separate feeds. This site is New York City Transit subway only.</li>
+</ul>
+
+<h2>Refresh and failure behaviour</h2>
+<p>The fetch script refuses to write a file that is empty or shorter than expected, and it treats a live feed reporting zero outages as a broken feed rather than good news, because across more than 700 units the agency has never reported zero. A failed refresh leaves the previous data in place and exits with an error rather than publishing an empty page.</p>
+
+<h2>Code</h2>
+<p>The fetch and build scripts are in the repository alongside this page. Every figure on the front page can be reproduced by running them against the same public endpoints.</p>
+
+<a class="back" href="index.html">&larr; Back to the record</a>
+</div>
+</body>
+</html>
