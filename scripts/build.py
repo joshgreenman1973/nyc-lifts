@@ -113,6 +113,14 @@ def main():
             # Kept for disclosure only: the inventory's claim about itself.
             "inv_removed": r.get("service_status_code") == "RNOS",
             "street": (r.get("street_access") or "").upper() == "YES",
+            # Which way a rider is going. An elevator serving only the
+            # Manhattan-bound platform strands Manhattan-bound riders even
+            # when the complex has other elevators running.
+            "direction": r.get("elevator_direction_serviced"),
+            "backup": next((r.get(f) for f in (
+                "redundant_elevator_platform", "redundant_elevator_mezzanine",
+                "redundant_elevator_street", "redundant_elevator_access")
+                if r.get(f)), None),
             "installed": (r.get("latest_installation_date") or "")[:10],
             "serving": r.get("notes"),
             "lat": num(r.get("x_coordinate"), None),
@@ -248,6 +256,8 @@ def main():
             "ada": o.get("ADA") == "Y",
             "redundant": u.get("redundant"),
             "redundancy_known": u.get("redundancy_known", False),
+            "direction": u.get("direction"),
+            "backup": u.get("backup"),
             "present": u.get("present", False),
             "inv_removed": u.get("inv_removed", False),
             "reason": o.get("reason"),
@@ -353,6 +363,20 @@ def main():
         "escalators_total": sum(1 for u in units.values()
                                 if u["kind"] == "Escalator" and u["present"]),
         "elevators_no_redundancy": no_redundancy,
+        # The sharper version of the redundancy question: serves a single
+        # direction of travel and has no redundant elevator at all.
+        "one_direction_no_backup": sum(
+            1 for u in elevators.values()
+            if u["present"] and not u["redundant"] and u["redundancy_known"]
+            and (u["direction"] or "") not in ("Both", "", None)),
+        "one_direction_total": sum(
+            1 for u in elevators.values()
+            if u["present"] and (u["direction"] or "") not in ("Both", "", None)),
+        "redundant_named_backup": sum(
+            1 for u in elevators.values()
+            if u["present"] and u["redundant"] and u["backup"]),
+        "redundant_total": sum(1 for u in elevators.values()
+                               if u["present"] and u["redundant"]),
         "redundancy_known": redundancy_known_n,
         # Outages are counted against the operating fleet. Units that are not
         # currently filing service hours still appear in the live feed, often

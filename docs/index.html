@@ -115,6 +115,12 @@ h2 .but{color:var(--stamp)}
 .bar-scale .rail span::before{content:"";position:absolute;left:50%;top:-4px;width:1px;height:4px;
   background:var(--ink-60)}
 .bar-scale .pad{min-width:66px}
+.barkey{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:12px;
+  font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-60)}
+.barkey i{width:16px;height:10px;display:inline-block;margin-right:5px;vertical-align:0;
+  border:1px solid var(--ink)}
+.barkey .solekey{color:var(--stamp)}
+.bar-label em{font-style:normal;color:var(--stamp);font-weight:600}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
 .filters button{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.05em;
   text-transform:uppercase;padding:6px 11px;border:1px solid var(--rule);
@@ -248,6 +254,12 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
     <button data-f="notrem" aria-pressed="false">Working fleet only</button>
     <span class="count" id="board-count"></span>
   </div>
+  <div class="barkey">
+    <span><i style="background:var(--stamp)"></i>Elevator</span>
+    <span><i style="background:var(--ink)"></i>Escalator</span>
+    <span><i style="background:var(--grey)"></i>Listed out, no longer filing service hours</span>
+    <span class="solekey">Sole elevator = the agency records no redundant elevator for it</span>
+  </div>
   <div class="bars" id="bars"></div>
   <details class="full">
     <summary>Open the full list, with reasons and estimated return dates</summary>
@@ -319,7 +331,7 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
       <li><b>Two MTA sources disagree, and this page takes the cautious side.</b> The equipment inventory and the live outage feed do not describe the same fleet. Calling a station inaccessible is the strongest claim here, so it is made only where the continuously updated live feed reports every accessibility elevator at that station out, and only at stations the agency itself lists as accessible. Accessibility elevators currently in that grey zone: <span id="disputed-n"></span>.</li>
       <li><b>What counts as an elevator is decided by behaviour, not by a label.</b> The inventory's own status field cannot be trusted for this: seven units it marks as removed filed 94 to 99 percent availability last month, and every unit it marks installed-but-not-functioning filed nothing. So the fleet here is the elevators that actually reported service hours in the most recent month. Units listed as out that are not filing at all, generally long capital replacements, are shown in grey and counted separately.</li>
       <li><b>Some equipment cannot be placed.</b> <span id="c-orphan">-</span> inventory records carry no station at all, and <span id="c-never">-</span> elevators never appear in the availability filings. They are excluded from station level figures rather than guessed at.</li>
-      <li><b>Redundancy is the agency's judgment, not a measurement.</b> The inventory records whether a unit has a redundant elevator. Where that field is blank, this page makes no claim.</li>
+      <li><b>"Redundant" is a weaker word than it sounds.</b> The inventory records whether some other elevator backs a unit up, and where it says yes it almost always names the specific machine (<span id="c-named">-</span> of <span id="c-redtot">-</span>). But that is a statement about the building, not about your trip: it does not mean the backup serves the same platform, the same direction, or that it is working today. Half the fleet serves a single direction of travel, and <b><span id="c-onedir">-</span> elevators both serve one direction and have no backup at all</b> — when one of those stops, riders heading that way have nothing. Where the field is blank, this page makes no claim.</li>
       <li><b>Entrapment counts are reports, not injuries.</b> The data records that riders were shut inside and freed. It says nothing about how long they waited or what happened to them.</li>
       <li><b>Most of the subway is not in this story at all.</b> Step-free access exists at a minority of stations. A perfect reliability score would still leave most of the system unreachable.</li>
     </ul>
@@ -372,6 +384,9 @@ function render(){
       {month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"});
   document.getElementById("disputed-n").textContent = h.disputed_units;
   document.getElementById("c-orphan").textContent = h.orphan_units;
+  document.getElementById("c-named").textContent = h.redundant_named_backup;
+  document.getElementById("c-redtot").textContent = h.redundant_total;
+  document.getElementById("c-onedir").textContent = h.one_direction_no_backup;
   document.getElementById("c-never").textContent = h.never_report;
 
   const fields=[
@@ -382,8 +397,9 @@ function render(){
      cls:h.cut_off_now>0?"stamp":"", sub:"every accessible elevator out at once"},
     {label:"Station complexes with full accessibility", val:h.ada_full, cls:"access",
      sub:"of "+F(h.stations_total)+" total, plus "+h.ada_partial+" partial"},
-    {label:"Elevators with no redundant elevator", val:h.elevators_no_redundancy,
-     sub:"of "+F(h.redundancy_known)+" where the agency records an answer"},
+    {label:"Elevators serving one direction with no backup", val:h.one_direction_no_backup,
+     sub:"of "+F(h.elevators_total)+" working elevators; "+F(h.elevators_no_redundancy)+
+         " in all have no redundant elevator"},
     {label:"Longest outage of a working elevator", val:Math.round(h.longest_outage_days)+" d",
      cls:"stamp", sub:esc(h.longest_outage_station)+" ("+esc(h.longest_outage_code)+")"},
     {label:"Times riders were shut inside an elevator since 2015",
@@ -462,9 +478,14 @@ function drawBoard(){
      </div><div class="pad"></div></div>`+
     r.map(x=>{
       const cls = !x.present?"rem":(x.kind==="Escalator"?"esc":"");
+      const sole = x.kind==="Elevator" && x.redundancy_known && !x.redundant;
+      const dir = (x.direction && x.direction!=="Both") ? x.direction+" only" : "";
       return `<div class="bar" title="${esc(x.reason||"")}">
         <div class="bar-label">${esc(x.station)}<span>${x.kind} ${esc(x.code)}${
-          x.ada?" &middot; accessibility":""}${x.present?"":" &middot; not filing service hours"}</span></div>
+          x.ada?" &middot; accessibility":""}${
+          sole?' &middot; <em>sole elevator</em>':""}${
+          dir?" &middot; "+esc(dir):""}${
+          x.present?"":" &middot; not filing service hours"}</span></div>
         <div class="bar-track"><div class="bar-fill ${cls}" style="width:${w(x.days_out)}%"></div></div>
         <div class="bar-days">${x.days_out!=null?Math.round(x.days_out):"-"} d</div></div>`;
     }).join("");
