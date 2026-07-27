@@ -52,7 +52,7 @@ a{color:var(--access)}
 <tr><th>What</th><th>Source</th><th>Used for</th></tr>
 <tr><td>Live elevator and escalator outages</td>
     <td>MTA public elevator and escalator feed (<code>nyct_ene.json</code>), read directly with no API key</td>
-    <td>Everything labelled "right now": the outage bars, the cut-off list, the map's red rings</td></tr>
+    <td>Everything labeled "right now": the outage bars, the cut-off list, the map's red rings</td></tr>
 <tr><td>Monthly availability per unit, from January 2015</td>
     <td>data.ny.gov <code>rc78-7x78</code></td>
     <td>The eleven year grid, the availability and entrapment charts, station and unit reliability</td></tr>
@@ -87,8 +87,8 @@ a{color:var(--access)}
   <li>23 inventory records carry no station assignment at all.</li>
 </ul>
 <p>Note also that <code>IFOS</code> expands to "Installed-Functioning-Out of Service", so "installed but not functioning" is the wrong gloss for it.</p>
-<p>Presence is therefore <b>behavioural</b>: an elevator is treated as part of the operating fleet if it filed service hours in the most recent month of availability data. That is a statement about what the machine did, not about what a static file says it is. On that definition the fleet is the elevators reporting in the latest month, and every fleet-wide figure on the front page uses it, including the redundancy denominator and the test for whether a station has lost step-free access.</p>
-<p>Units that appear in the live outage feed but are not filing service hours, generally multi-year capital replacements, are counted and displayed separately in grey. They are real losses of service and are not hidden; they are simply not counted as breakdowns of machines that are running.</p>
+<p>Presence is therefore <b>behavioral</b>: an elevator is treated as part of the operating fleet if it filed service hours in the most recent month of availability data. That is a statement about what the machine did, not about what a static file says it is. On that definition the fleet is the elevators reporting in the latest month, and every fleet-wide figure on the front page uses it, including the redundancy denominator and the test for whether a station has lost step-free access.</p>
+<p>Units that appear in the live outage feed but are not filing service hours, generally multi-year capital replacements, are counted and displayed separately in gray. They are real losses of service and are not hidden; they are simply not counted as breakdowns of machines that are running.</p>
 
 <h2>When a station counts as having no way in</h2>
 <p>A station complex appears in "No way in" when all three of these hold: the MTA's own station list records the complex as accessible, in full or in part; every accessibility-flagged elevator there that is currently filing service hours is listed as out in the live feed; and the complex has at least one such elevator.</p>
@@ -96,7 +96,7 @@ a{color:var(--access)}
 <div class="warn">
 <p>This is deliberately conservative, in two directions worth stating plainly.</p>
 <p><b>It undercounts.</b> Many complexes require several elevators in sequence to get from street to platform. One broken elevator in that chain can strand a rider at a station this page still counts as open, because another accessible elevator elsewhere in the complex is running.</p>
-<p><b>It resolves conflicts between two MTA files in favour of the cautious answer.</b> The inventory and the live feed do not describe the same fleet, and where they disagree the continuously updated feed decides, because calling a station inaccessible is the strongest claim this site makes.</p>
+<p><b>It resolves conflicts between two MTA files in favor of the cautious answer.</b> The inventory and the live feed do not describe the same fleet, and where they disagree the continuously updated feed decides, because calling a station inaccessible is the strongest claim this site makes.</p>
 </div>
 
 <h2>Joins</h2>
@@ -104,7 +104,7 @@ a{color:var(--access)}
 <p>Ridership is joined on the same complex identifier. Of 445 complexes, 426 have ridership in the trailing window; the remainder are shown without a trip count rather than with a zero.</p>
 
 <h2>The eleven year grid</h2>
-<p>One row per elevator that has ever filed availability data, one cell per month, ordered by borough and station. 62 inventory elevators never file and cannot be drawn. Each cell is bucketed by that month's availability. Blank cells are distinguished by cause: before a unit's first filing, after its last, and gaps in between, which are not the same thing and are labelled separately in the tooltip. The buckets are deliberately fine at the top end and coarse at the bottom, because most unit-months sit between 98 and 100 percent and that is where the differences are legible.</p>
+<p>One row per elevator that has ever filed availability data, one cell per month, ordered by borough and station. 62 inventory elevators never file and cannot be drawn. Each cell is bucketed by that month's availability. Blank cells are distinguished by cause: before a unit's first filing, after its last, and gaps in between, which are not the same thing and are labeled separately in the tooltip. The buckets are deliberately fine at the top end and coarse at the bottom, because most unit-months sit between 98 and 100 percent and that is where the differences are legible.</p>
 <p>Escalators are excluded from the grid. They are a different machine answering a different question, and mixing them would double the rows while diluting the accessibility story. They remain in the availability chart, drawn separately, and on the outage bars.</p>
 
 <h2>Entrapments</h2>

@@ -61,7 +61,7 @@ def main():
     # The inventory's service_status_code is not a reliable signal. Seven units
     # it marks RNOS ("Removed") reported 94-99 percent availability in the most
     # recent month, and every INOS/IFOS unit reports nothing at all. Presence is
-    # therefore behavioural: an elevator is in the operating fleet if it filed
+    # therefore behavioral: an elevator is in the operating fleet if it filed
     # service hours in the latest month of the availability data. Sixty-two
     # elevators the inventory lists never appear in that data in any month;
     # they are counted and disclosed separately rather than silently included.
@@ -105,7 +105,7 @@ def main():
             # '+' has a redundant elevator, '-' does not. Escalators are null.
             "redundant": r.get("redundant_elevator") == "+",
             "redundancy_known": r.get("redundant_elevator") in ("+", "-"),
-            # Behavioural presence, not the inventory's own status field.
+            # Behavioral presence, not the inventory's own status field.
             "present": code in reported_latest,
             "ever_reported": code in ever_reported,
             "status": r.get("service_status"),
@@ -167,7 +167,7 @@ def main():
             "unscheduled": int(k["unscheduled"]),
             "scheduled": int(k["scheduled"]),
             "units": n_units,
-            # Normalised so a growing fleet does not look like a worsening one.
+            # Normalized so a growing fleet does not look like a worsening one.
             "entrapments_per_100_units": round(100 * k["entrapments"] / n_units, 1)
             if n_units else None,
         })
@@ -495,14 +495,14 @@ def main():
     }
 
     # ---- route geometry ----------------------------------------------------
-    # Coordinates rounded to five decimals (about a metre) to keep the file
+    # Coordinates rounded to five decimals (about a meter) to keep the file
     # small; the lines are drawn as context, not measured against.
     try:
         raw_lines = load("subway_lines.json")
     except FileNotFoundError:
         raw_lines = []
     # The published geometry carries survey-grade vertex density, which is
-    # 4.5 MB for a map drawn at city scale. Simplified to roughly 15 metres
+    # 4.5 MB for a map drawn at city scale. Simplified to roughly 15 meters
     # and rounded to four decimals; the lines are context, not measurement.
     from shapely.geometry import MultiLineString, mapping
     TOL = 0.00015
