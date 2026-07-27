@@ -311,8 +311,14 @@ def main():
             if k and k["hours_total"] else None,
             "entrapments": int(k["entrapments"]) if k else 0,
             "unscheduled": int(k["unscheduled"]) if k else 0,
+            # Counted against the same fleet as `elevators` above, or the
+            # popup reads "3 elevators, 5 out now".
             "out_now": sum(1 for r in current
-                           if r["complex"] == cid and r["kind"] == "Elevator"),
+                           if r["complex"] == cid and r["kind"] == "Elevator"
+                           and r["present"]),
+            "out_now_offline": sum(1 for r in current
+                                   if r["complex"] == cid and r["kind"] == "Elevator"
+                                   and not r["present"]),
             "cut_off": any(c["complex"] == cid for c in cut_off),
         })
 

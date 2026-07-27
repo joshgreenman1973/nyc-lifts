@@ -613,8 +613,9 @@ function drawMap(){
       `<div class="pop-name">${esc(s.name)}</div>
        <div class="pop-row">${esc(s.borough||"")} &middot; ${
          s.ada===1?"<b>Full step-free access</b>":s.ada===2?"<b>Partial step-free access</b>":"No step-free access"}</div>
-       ${s.elevators?`<div class="pop-row">Elevators: <b>${s.elevators}</b>${
-         s.out_now?`, <b style="color:#c8102e">${s.out_now} out now</b>`:""}</div>`:""}
+       ${s.elevators?`<div class="pop-row">Working elevators: <b>${s.elevators}</b>${
+         s.out_now?`, <b style="color:#c8102e">${s.out_now===s.elevators?"all "+s.out_now:s.out_now} out now</b>`:", none out now"}</div>`:""}
+       ${s.out_now_offline?`<div class="pop-row">Plus <b>${s.out_now_offline}</b> listed out that no longer file service hours</div>`:""}
        ${s.availability!=null?`<div class="pop-row">Availability, past ${D.recent_window.months} months: <b>${s.availability.toFixed(1)}%</b></div>`:""}
        ${s.entrapments?`<div class="pop-row">Entrapments in that window: <b>${s.entrapments}</b></div>`:""}
        ${s.riders12?`<div class="pop-row">Trips in the past year: <b>${F(Math.round(s.riders12))}</b></div>`:""}`);
