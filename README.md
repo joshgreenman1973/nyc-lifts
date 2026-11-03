@@ -3,9 +3,8 @@
 Every elevator in the New York City subway, and whether it is working right now.
 
 The Metropolitan Transportation Authority reports about 97 percent elevator
-availability. That number is true and it is not the number a rider in a
-wheelchair needs, which is whether the one elevator at their station is running
-today. This site reports both.
+availability. That number is true. A rider in a wheelchair also needs to know whether the
+one elevator at their station is running today. This site reports both.
 
 **Live site:** https://joshgreenman1973.github.io/nyc-lifts/
 

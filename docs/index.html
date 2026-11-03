@@ -209,13 +209,13 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
     <span id="stamp-date">loading</span>
   </div>
   <h1 class="wordmark">L<span class="if">if</span>ts</h1>
-  <p class="deck">Every elevator in the New York City subway, and whether it is working right now. The system reports <b>97.6 percent availability</b>. That number is true. It is also not the number a rider in a wheelchair needs, which is whether <b>the one elevator at their station</b> is running today.</p>
+  <p class="deck">Every elevator in the New York City subway, and whether it is working right now. The system reports <b>97.6 percent availability</b>. That number is true. A rider in a wheelchair also needs to know whether <b>the one elevator at their station</b> is running today.</p>
   <div class="fields" id="fields"></div>
 </div>
 
 <section id="mapsec">
   <div class="shead">
-    <h2>The subway you can actually enter</h2>
+    <h2>The subway you can enter</h2>
     <span class="note">445 station complexes</span>
   </div>
   <p class="intro">Every station in the system, drawn on its own lines. Solid blue is step-free access. The small hollow marks are stations with none, and there are more of them than everything else combined. Red is a station whose accessible elevators are all out right now. Click any station for its record.</p>
@@ -235,7 +235,7 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
     <h2>No way in</h2>
     <span class="note">stations where every accessible elevator is out</span>
   </div>
-  <p class="intro">A station is only step-free if its elevators run. When every elevator designated accessible at a complex is out at once, the station is, for that day, a staircase.</p>
+  <p class="intro">A station is only step-free if its elevators run. When every elevator designated accessible at a complex is out at once, the station has no step-free access that day.</p>
   <div id="cutoff-body"></div>
 </section>
 
@@ -277,7 +277,7 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
     <h2>Eleven years, one elevator per line</h2>
     <span class="note" id="grid-note"></span>
   </div>
-  <p class="intro">Every elevator in the system is a single horizontal line. Every month since January 2015 is a step along it. The darker the mark, the more of that month the elevator was out; gray marks months with no filing, which is not the same thing everywhere: before a unit's first filing it had not started, after its last it had stopped, and in between it simply did not file. Read down for the fleet, across for one machine's life. The long dark runs are capital replacements. The scattered flecks are ordinary breakdowns, and there are a lot of them: only one unit-month in six is above 99.5 percent availability. This covers the <span id="grid-cov">-</span> elevators that have ever filed availability data. A further <span id="grid-never">-</span> appear in the equipment inventory but have never filed at all, and cannot be drawn here.</p>
+  <p class="intro">Every elevator in the system is a single horizontal line. Every month since January 2015 is a step along it. The darker the mark, the more of that month the elevator was out; gray marks months with no filing, which is not the same thing everywhere: before a unit's first filing it had not started, after its last it had stopped, and in between it did not file. Read down for the fleet, across for one machine's life. The long dark runs are capital replacements. The scattered flecks are ordinary breakdowns, and there are a lot of them: only one unit-month in six is above 99.5 percent availability. This covers the <span id="grid-cov">-</span> elevators that have ever filed availability data. A further <span id="grid-never">-</span> appear in the equipment inventory but have never filed at all, and cannot be drawn here.</p>
   <div class="gridwrap">
     <canvas id="grid"></canvas>
     <div id="grid-tip">Hover the grid for a unit and month.</div>
@@ -295,7 +295,7 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
     <h2>The record since 2015</h2>
     <span class="note" id="record-note"></span>
   </div>
-  <p class="intro">Elevator availability is the best it has been in a decade. The number of people shut inside a stopped elevator is also near its highest. Both are true at once, which is why one number cannot carry this story.</p>
+  <p class="intro">Elevator availability is the best it has been in a decade. The number of people shut inside a stopped elevator is also near its highest.</p>
   <div class="charts">
     <div class="chart">
       <h3>Availability</h3>
@@ -324,16 +324,16 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
     <span class="note">what these numbers do not press</span>
   </div>
   <div class="prose">
-    <p>Every figure here comes from the Metropolitan Transportation Authority's own published data. That is a strength and a limit at once. What the record does not capture:</p>
+    <p>Every figure here comes from the Metropolitan Transportation Authority's own published data. What the record does not capture:</p>
     <ul>
-      <li><b>An elevator counted as available can still fail you.</b> Availability is measured in hours in service. It does not measure whether the car was filthy, whether the door held, or whether it was running when you happened to arrive.</li>
+      <li><b>An elevator counted as available can still fail you.</b> Availability is measured in hours in service. It does not measure whether the car was filthy, whether the door held or whether it was running when you happened to arrive.</li>
       <li><b>"No way in" is deliberately conservative.</b> A station appears only when every elevator marked accessible there is out in the live feed. Many complexes need several elevators in sequence to get from street to platform, so a single outage can strand a rider at a station this page still counts as open.</li>
       <li><b>Two MTA sources disagree, and this page takes the cautious side.</b> The equipment inventory and the live outage feed do not describe the same fleet. Calling a station inaccessible is the strongest claim here, so it is made only where the continuously updated live feed reports every accessibility elevator at that station out, and only at stations the agency itself lists as accessible. Accessibility elevators currently in that gray zone: <span id="disputed-n"></span>.</li>
-      <li><b>What counts as an elevator is decided by behaviour, not by a label.</b> The inventory's own status field cannot be trusted for this: seven units it marks as removed filed 94 to 99 percent availability last month, and every unit it marks installed-but-not-functioning filed nothing. So the fleet here is the elevators that actually reported service hours in the most recent month. Units listed as out that are not filing at all, generally long capital replacements, are shown in gray and counted separately.</li>
-      <li><b>Some equipment cannot be placed.</b> <span id="c-orphan">-</span> inventory records carry no station at all, and <span id="c-never">-</span> elevators never appear in the availability filings. They are excluded from station level figures rather than guessed at.</li>
-      <li><b>"Redundant" is a weaker word than it sounds.</b> The inventory records whether some other elevator backs a unit up, and where it says yes it almost always names the specific machine (<span id="c-named">-</span> of <span id="c-redtot">-</span>). But that is a statement about the building, not about your trip: it does not mean the backup serves the same platform, the same direction, or that it is working today. Half the fleet serves a single direction of travel, and <b><span id="c-onedir">-</span> elevators both serve one direction and have no backup at all</b> — when one of those stops, riders heading that way have nothing. Where the field is blank, this page makes no claim.</li>
+      <li><b>What counts as an elevator is decided by what each unit reports.</b> The inventory's own status field cannot be trusted for this: seven units it marks as removed filed 94 to 99 percent availability last month, and every unit it marks installed-but-not-functioning filed nothing. So the fleet here is the elevators that reported service hours in the most recent month. Units listed as out that are not filing at all, generally long capital replacements, are shown in gray and counted separately.</li>
+      <li><b>Some equipment cannot be placed.</b> <span id="c-orphan">-</span> inventory records carry no station at all, and <span id="c-never">-</span> elevators never appear in the availability filings. They are excluded from station level figures.</li>
+      <li><b>"Redundant" is a weaker word than it sounds.</b> The inventory records whether some other elevator backs a unit up, and where it says yes it almost always names the specific machine (<span id="c-named">-</span> of <span id="c-redtot">-</span>). It does not mean the backup serves the same platform or the same direction, or that it is working today. Half the fleet serves a single direction of travel, and <b><span id="c-onedir">-</span> elevators both serve one direction and have no backup at all</b>. When one of those stops, riders heading that way have no elevator. Where the field is blank, this page makes no claim.</li>
       <li><b>Entrapment counts are reports, not injuries.</b> The data records that riders were shut inside and freed. It says nothing about how long they waited or what happened to them.</li>
-      <li><b>Most of the subway is not in this story at all.</b> Step-free access exists at a minority of stations. A perfect reliability score would still leave most of the system unreachable.</li>
+      <li><b>Most of the subway is outside this record.</b> Step-free access exists at a minority of stations. A perfect reliability score would still leave most of the system unreachable.</li>
     </ul>
   </div>
 </section>
@@ -356,7 +356,7 @@ footer{margin:52px 0 60px;border-top:2px solid var(--rule);padding-top:16px;font
   <button class="caution-btn" id="caution-btn">And please read this AI caution.</button>
   <div class="caution" id="caution">
     <p>Everything substantive here (the concept, the choice of data, the questions asked of it and the desired layout) was directed by the author, a human. The coding, the data plumbing and the file wrangling were primarily in the hands of Anthropic's Claude and Claude Code, under close and skeptical direction.</p>
-    <p>Quality control actually performed on this project: the station identifier join was verified by spot check against named stations before any figure was computed; availability was recomputed from summed hours rather than averaged percentages; entrapment totals were reconciled against a server side sum of the source dataset; equipment that has been physically removed was separated from equipment that is merely broken, after a discrepancy between two MTA files was found and traced; the fetch scripts fail loudly and refuse to publish rather than write an empty or truncated file; and every headline number was independently recomputed from the raw files by a reviewer working blind, with no knowledge of how the page was built.</p>
+    <p>Quality control performed on this project: the station identifier join was verified by spot check against named stations before any figure was computed; availability was recomputed from summed hours rather than averaged percentages; entrapment totals were reconciled against a server side sum of the source dataset; equipment that has been physically removed was separated from equipment that is merely broken, after a discrepancy between two MTA files was found and traced; the fetch scripts fail loudly and refuse to publish rather than write an empty or truncated file; and every headline number was independently recomputed from the raw files by a reviewer working blind, with no knowledge of how the page was built.</p>
     <p>The risks of using AI remain. If you spot a red flag in anything presented here, please say so.</p>
   </div>
   <p class="byline" style="font-size:.78rem;opacity:.75;margin-top:.9rem">Built by Josh Greenman.</p>
@@ -439,8 +439,8 @@ function drawCutoff(){
   const cb=document.getElementById("cutoff-body");
   if(!D.cut_off.length){
     cb.innerHTML='<div class="alarm" style="border-color:var(--ink)"><div class="allclear">'+
-      'No station currently has all of its accessible elevators out. That is the good case, '+
-      'and it is not the usual one.</div></div>'; return;
+      'No station currently has all of its accessible elevators out, '+
+      'which is unusual.</div></div>'; return;
   }
   cb.innerHTML='<div class="alarm"><div class="alarm-top">'+D.cut_off.length+' station'+
     (D.cut_off.length>1?'s':'')+' with no working step-free access</div><div class="alarm-body">'+
